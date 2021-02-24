@@ -57,11 +57,6 @@
 
   vars_files:
     - ./vars/vars.yml
-  # vars:
-  #   smtp_server: smtp.eu.mailgun.org
-  #   smtp_user: ec_server@mail.cyn.host
-  #   smtp_password: 73f26d2cdb8c3d8f41daecc0287ef7cd-d32d817f-7c60dfdc
-  #   smtp_port: 587 # if this port changes then the lineinfile module must be modified too - use a conditional somewhere???
 
     # - name: Remote server ansible variables
     #   debug:
