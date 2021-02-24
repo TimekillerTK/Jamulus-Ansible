@@ -1,0 +1,102 @@
+---
+- name: Some Weird Test
+  hosts: raw
+  tasks:
+    - name: Ensure unattended upgrades, update notifier and mailutils are installed
+      apt: 
+        pkg:
+          - unattended-upgrades
+          - update-notifier-common
+          - mailutils
+        state: present
+
+# Create file /etc/postfix/password containing SMTP login settings
+    - name: Add SMTP password file
+      template:
+        src: smtp_password.j2
+        dest: /etc/postfix/password
+        owner: root
+        group: root
+        mode: 0600
+
+# Running this over and over again is harmless, but not optimal. This is a required step, otherwise you'll bump into the following errors 
+# Feb 23 16:40:05 ubuntu-ansible postfix/smtp[6668]: warning: hash:/etc/postfix/password is unavailable. open database /etc/postfix/password.db: No such file or directory
+# Feb 23 16:40:05 ubuntu-ansible postfix/smtp[6668]: warning: hash:/etc/postfix/password lookup error for "smtp.eu.mailgun.org"
+# Feb 23 16:40:05 ubuntu-ansible postfix/smtp[6668]: warning: 76EF7220EE7: smtp_sasl_password_maps lookup error
+    - name: Set permissions for /etc/postfix/password with postmap
+      shell: postmap hash:/etc/postfix/password
+    
+# For port 587, if statement here later (?)
+    - name: Enable postfix submission port {{ vars.smtp_port }}
+      lineinfile:
+        dest: /etc/postfix/master.cf
+        regexp: "^(#)?submission inet n       -       y       -       -       smtpd"
+        line: "submission inet n       -       y       -       -       smtpd"
+      notify:
+      - restart postfix
+
+
+# Set up SMTP server for automated E-mail notifications
+# Config /etc/postfix/main.cf with specific settings (Jinja Template?)
+# Note: there may be an issue with the hashed password
+    - name: Postfix main.cf file set
+      template:
+        src: postfix.j2
+        dest: /etc/postfix/main.cf
+          # don't forget notify to restart Postfix
+      notify:
+      - restart postfix
+
+
+  handlers:
+    - name: restart postfix
+      service:
+        name: postfix
+        state: restarted
+
+
+  vars_files:
+    - ./vars/vars.yml
+  # vars:
+  #   smtp_server: smtp.eu.mailgun.org
+  #   smtp_user: ec_server@mail.cyn.host
+  #   smtp_password: 73f26d2cdb8c3d8f41daecc0287ef7cd-d32d817f-7c60dfdc
+  #   smtp_port: 587 # if this port changes then the lineinfile module must be modified too - use a conditional somewhere???
+
+    # - name: Remote server ansible variables
+    #   debug:
+    #     msg: "{{ ansible_env }}"
+
+
+# Set time to current timezone (???)
+
+
+
+# Config Unattended Upgrades (Jinja Template?)
+# - Automatic Reboot : True
+# - Unattended Update reboot time : True
+# - Specific Mail to notify
+# - When to send mail report 
+
+# "Security" play
+
+# Change SSH port & Disable password Auth (done by provision)
+
+# Set UFW firewall settings
+# Default Deny Incomming 
+#* `sudo ufw allow 20022/tcp` - allow specific port (SSH)
+#* `ufw limit 20022/tcp comment "rate limiting"` - rate limit connections to default (6 connections within 30 secs)
+# Enable Firewall
+
+# Notify via mail on SSH login 
+# - upload .sh file
+# - add line to /etc/pam.d/sshd
+
+
+# Install Jamulus
+# build-essential qt5-qmake qtdeclarative5-dev qt5-default qttools5-dev-tools libjack-jackd2-dev
+# Download and unpack:
+# wget https://github.com/corrados/jamulus/archive/latest.tar.gz && tar -xzvf ./latest.tar.gz`
+# make the build then lol
+
+# Make a test run
