@@ -59,7 +59,50 @@
       notify:
       - restart unattended-upgrades
 
+# Set time to current timezone - ntp server is not required
+    - name: Set timezone to {{ vars.time_zone }}
+      community.general.timezone:
+        name: "{{ vars.time_zone }}"
 
+# Notify via mail on SSH login 
+# - upload .sh file
+# - add line to /etc/pam.d/sshd
+    - name: Upload shell script for SSH login notification
+      template:
+        src: ssh_notify.j2
+        dest: /etc/ssh/login_notify.sh
+        owner: root
+        group: root
+        mode: 0700
+
+    - name: Modify sshd file to trigger SSH login notification script
+      lineinfile:
+        regexp: "^(#)?session optional pam_exec.so seteuid /etc/ssh/login_notify.sh"
+        line: "session optional pam_exec.so seteuid /etc/ssh/login_notify.sh"
+        state: present
+        dest: /etc/pam.d/sshd
+      notify:
+      - restart sshd
+
+# "Security" play
+# Change SSH port & Disable password Auth (done by provision)
+# To be done last
+    # - name: Change SSH port to {{ ssh_port }}
+    #   template:
+    #     src: 
+    - name: Firewalld set SSH port enabled
+      firewalld:
+        port: "{{ vars.ssh_port }}/tcp"
+        permanent: yes
+        immediate: yes
+        state: enabled
+# Use firewalld module here
+
+# Set UFW firewall settings
+# Default Deny Incomming 
+#* `sudo ufw allow 20022/tcp` - allow specific port (SSH)
+#* `ufw limit 20022/tcp comment "rate limiting"` - rate limit connections to default (6 connections within 30 secs)
+# Enable Firewall
 
   handlers:
     - name: restart postfix
@@ -70,6 +113,10 @@
       service:
         name: unattended-upgrades
         state: restarted
+    - name: restart sshd
+      service:
+        name: sshd
+        state: restarted
 
 
   vars_files:
@@ -79,24 +126,9 @@
     #   debug:
     #     msg: "{{ ansible_env }}"
 
-# Set time to current timezone (???)
 
 
 
-
-# "Security" play
-
-# Change SSH port & Disable password Auth (done by provision)
-
-# Set UFW firewall settings
-# Default Deny Incomming 
-#* `sudo ufw allow 20022/tcp` - allow specific port (SSH)
-#* `ufw limit 20022/tcp comment "rate limiting"` - rate limit connections to default (6 connections within 30 secs)
-# Enable Firewall
-
-# Notify via mail on SSH login 
-# - upload .sh file
-# - add line to /etc/pam.d/sshd
 
 
 # Install Jamulus

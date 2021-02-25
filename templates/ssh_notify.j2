@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ "$PAM_TYPE" != "close_session" ]; then
+    host="`hostname`"
+    subject="SSH Login: $PAM_USER from $PAM_RHOST on $host"
+    # Message to send, e.g. the current environment variables.
+    message="`env`"
+    echo "$message" | mailx -r "ssh_login@$host.info" -s "$subject" "{{ vars.notify_email }}"
+fi
