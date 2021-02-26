@@ -96,6 +96,14 @@
         permanent: yes
         immediate: yes
         state: enabled
+
+    - name: Firewalld set Jamulus port enabled
+      firewalld:
+        port: "22124/udp"
+        permanent: yes
+        immediate: yes
+        state: enabled
+
 # Use firewalld module here
 
 # Set UFW firewall settings
@@ -103,6 +111,48 @@
 #* `sudo ufw allow 20022/tcp` - allow specific port (SSH)
 #* `ufw limit 20022/tcp comment "rate limiting"` - rate limit connections to default (6 connections within 30 secs)
 # Enable Firewall
+
+
+# Install Jamulus
+# build-essential qt5-qmake qtdeclarative5-dev qt5-default qttools5-dev-tools libjack-jackd2-dev
+# Download and unpack:
+# wget https://github.com/corrados/jamulus/archive/latest.tar.gz && tar -xzvf ./latest.tar.gz`
+# make the build then lol
+# Make a test run
+    - name: Install Jamulus dependencies
+      apt: 
+        pkg:
+          - build-essential 
+          - qt5-qmake 
+          - qtdeclarative5-dev
+          # - qt5-default (doesn't exist? apparently not needed) 
+          - qttools5-dev-tools
+        state: present
+
+
+    - name: Create jamulus user
+      ansible.builtin.user:
+        name: jamulus
+        state: present
+        create_home: no
+        system: yes
+
+    - name: Extract jamulus.tar.gz into home directory of ansible user
+      ansible.builtin.unarchive:
+        src: ./jamulus.tar.gz
+        dest: /home/ansible_user
+    
+    # Here's where we make and install Jamulus (to be done later)
+
+    - name: Systemd unit file for Jamulus
+      template:
+        src: systemd-unit.j2
+        dest: /etc/systemd/system/jamulus.service
+        owner: root
+        group: root
+        mode: 0644
+      notify:
+        - start enable jamulus
 
   handlers:
     - name: restart postfix
@@ -117,6 +167,11 @@
       service:
         name: sshd
         state: restarted
+    - name: start enable jamulus
+      service:
+        name: jamulus
+        state: restarted
+        enabled: yes
 
 
   vars_files:
@@ -129,12 +184,3 @@
 
 
 
-
-
-# Install Jamulus
-# build-essential qt5-qmake qtdeclarative5-dev qt5-default qttools5-dev-tools libjack-jackd2-dev
-# Download and unpack:
-# wget https://github.com/corrados/jamulus/archive/latest.tar.gz && tar -xzvf ./latest.tar.gz`
-# make the build then lol
-
-# Make a test run
