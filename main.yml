@@ -9,6 +9,7 @@
           - update-notifier-common
           - mailutils
         state: present
+        update_cache: yes
 
 # Create file /etc/postfix/password containing SMTP login settings
     - name: Add SMTP password file
@@ -119,7 +120,7 @@
 # wget https://github.com/corrados/jamulus/archive/latest.tar.gz && tar -xzvf ./latest.tar.gz`
 # make the build then lol
 # Make a test run
-    - name: Install Jamulus dependencies
+    - name: Ensure Jamulus dependencies are installed
       apt: 
         pkg:
           - build-essential 
@@ -128,7 +129,11 @@
           # - qt5-default (doesn't exist? apparently not needed) 
           - qttools5-dev-tools
         state: present
-
+        update_cache: yes
+    
+    # - name: debug jamulus dependencies
+    #   debug:
+    #     msg: "{{ temp_result }}"
 
     - name: Create jamulus user
       ansible.builtin.user:
@@ -137,12 +142,32 @@
         create_home: no
         system: yes
 
-    - name: Extract jamulus.tar.gz into home directory of ansible user
+# This will check if Jamulus is installed
+    - name: Check if Jamulus is already installed
+      shell: command -v /usr/local/bin/Jamulus
+      register: jamuluscheck
+      # Ignore errors works fine, but it should ideally supress this output as we don't care if it errors out
+      ignore_errors: true
+
+    - name: DEBUG - Remote server ansible variables
+      debug:
+        msg: "{{ jamuluscheck }}"
+
+    - name: DEBUG - write debug message of return code
+      debug:
+        msg: "Success!!!"
+      when: jamuluscheck.rc == 0
+
+    - name: Extract jamulus.tar.gz into home directory of the ansible_user user
       ansible.builtin.unarchive:
         src: ./jamulus.tar.gz
         dest: /home/ansible_user
+      when: jamuluscheck.rc > 0
     
     # Here's where we make and install Jamulus (to be done later)
+    - name: Install Jamulus on the server
+      shell: bash -lc "cd /home/ansible_user/jamulus-latest && qmake 'CONFIG+=nosound headless' Jamulus.pro && make clean && make && make install"
+      when: jamuluscheck.rc > 0
 
     - name: Systemd unit file for Jamulus
       template:
