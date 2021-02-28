@@ -1,5 +1,8 @@
+#############################
+## Unattended Upgrades Play##
+#############################
 ---
-- name: Some Weird Test
+- name: Unattended upgrades & notifications play
   hosts: raw
   tasks:
     - name: Ensure unattended upgrades, update notifier and mailutils are installed
@@ -36,7 +39,6 @@
       notify:
       - restart postfix
 
-
 # Set up SMTP server for automated E-mail notifications
 # Config /etc/postfix/main.cf with specific settings (Jinja Template?)
 # Note: there may be an issue with the hashed password
@@ -65,6 +67,26 @@
       community.general.timezone:
         name: "{{ vars.time_zone }}"
 
+  vars_files:
+    - ./vars/vars.yml
+
+  handlers:
+    - name: restart postfix
+      service:
+        name: postfix
+        state: restarted
+    - name: restart unattended-upgrades
+      service:
+        name: unattended-upgrades
+        state: restarted
+
+##################
+## Security Play##
+##################
+
+- name: Security play
+  hosts: raw
+  tasks:
 # Notify via mail on SSH login 
 # - upload .sh file
 # - add line to /etc/pam.d/sshd
@@ -76,6 +98,7 @@
         group: root
         mode: 0700
 
+# Too spammy during testing, disabled for now
     - name: Modify sshd file to trigger SSH login notification script
       lineinfile:
         regexp: "^(#)?session optional pam_exec.so seteuid /etc/ssh/login_notify.sh"
@@ -86,17 +109,20 @@
       - restart sshd
 
 # "Security" play
-# Change SSH port & Disable password Auth (done by provision)
-# To be done last
-    # - name: Change SSH port to {{ ssh_port }}
-    #   template:
-    #     src: 
-    - name: Firewalld set SSH port enabled
+    - name: Firewalld set SSH port {{ vars.ssh_port }} with rate limiting
       firewalld:
-        port: "{{ vars.ssh_port }}/tcp"
+        rich_rule: "rule family='ipv4' port port='{{ vars.ssh_port }}' protocol='tcp' accept limit value='5/m'"
         permanent: yes
         immediate: yes
         state: enabled
+    
+# Maybe instead of having this option, the previous one should upload a .j2 template with ssh service modified
+    - name: Ensure default ssh service is disabled
+      firewalld:
+        service: ssh
+        permanent: yes
+        immediate: yes
+        state: disabled
 
     - name: Firewalld set Jamulus port enabled
       firewalld:
@@ -105,36 +131,34 @@
         immediate: yes
         state: enabled
 
-# Use firewalld module here
 
-# Set UFW firewall settings
-# Default Deny Incomming 
-#* `sudo ufw allow 20022/tcp` - allow specific port (SSH)
-#* `ufw limit 20022/tcp comment "rate limiting"` - rate limit connections to default (6 connections within 30 secs)
-# Enable Firewall
+  vars_files:
+    - ./vars/vars.yml
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: sshd
+        state: restarted
 
 
-# Install Jamulus
-# build-essential qt5-qmake qtdeclarative5-dev qt5-default qttools5-dev-tools libjack-jackd2-dev
-# Download and unpack:
-# wget https://github.com/corrados/jamulus/archive/latest.tar.gz && tar -xzvf ./latest.tar.gz`
-# make the build then lol
-# Make a test run
+#######################
+## Jamulus setup Play##
+#######################
+
+- name: Jamulus Setup play
+  hosts: raw
+  tasks:
     - name: Ensure Jamulus dependencies are installed
       apt: 
         pkg:
           - build-essential 
           - qt5-qmake 
           - qtdeclarative5-dev
-          # - qt5-default (doesn't exist? apparently not needed) 
           - qttools5-dev-tools
         state: present
         update_cache: yes
     
-    # - name: debug jamulus dependencies
-    #   debug:
-    #     msg: "{{ temp_result }}"
-
     - name: Create jamulus user
       ansible.builtin.user:
         name: jamulus
@@ -149,24 +173,15 @@
       # Ignore errors works fine, but it should ideally supress this output as we don't care if it errors out
       ignore_errors: true
 
-    - name: DEBUG - Remote server ansible variables
-      debug:
-        msg: "{{ jamuluscheck }}"
-
-    - name: DEBUG - write debug message of return code
-      debug:
-        msg: "Success!!!"
-      when: jamuluscheck.rc == 0
-
-    - name: Extract jamulus.tar.gz into home directory of the ansible_user user
+    - name: Extract {{ vars.jamulus_archive_path }} into home directory of the ansible user
       ansible.builtin.unarchive:
-        src: ./jamulus.tar.gz
-        dest: /home/ansible_user
+        src: "{{ vars.jamulus_archive_path }}"
+        dest: /home/{{ ansible_user }}
       when: jamuluscheck.rc > 0
     
     # Here's where we make and install Jamulus (to be done later)
     - name: Install Jamulus on the server
-      shell: bash -lc "cd /home/ansible_user/jamulus-latest && qmake 'CONFIG+=nosound headless' Jamulus.pro && make clean && make && make install"
+      shell: bash -lc "cd /home/{{ ansible_user }}/jamulus-latest && qmake 'CONFIG+=nosound headless' Jamulus.pro && make clean && make && make install"
       when: jamuluscheck.rc > 0
 
     - name: Systemd unit file for Jamulus
@@ -180,18 +195,6 @@
         - start enable jamulus
 
   handlers:
-    - name: restart postfix
-      service:
-        name: postfix
-        state: restarted
-    - name: restart unattended-upgrades
-      service:
-        name: unattended-upgrades
-        state: restarted
-    - name: restart sshd
-      service:
-        name: sshd
-        state: restarted
     - name: start enable jamulus
       service:
         name: jamulus
@@ -201,11 +204,4 @@
 
   vars_files:
     - ./vars/vars.yml
-
-    # - name: Remote server ansible variables
-    #   debug:
-    #     msg: "{{ ansible_env }}"
-
-
-
 
