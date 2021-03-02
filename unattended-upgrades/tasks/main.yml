@@ -1,0 +1,21 @@
+---
+- name: Ensure unattended upgrades & update notifier packager are installed
+  apt: 
+    pkg:
+      - unattended-upgrades
+      - update-notifier-common
+    state: present
+    update_cache: yes
+
+
+# Config Unattended Upgrades (Jinja Template?)
+# - Automatic Reboot : True
+# - Unattended Update reboot time : True
+# - Specific Mail to notify
+# - When to send mail report 
+- name: Configuring Unattended Upgrades for 50unattended-upgrades.conf file
+  template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+  notify:
+  - restart unattended-upgrades

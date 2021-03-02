@@ -1,0 +1,3 @@
+---
+# defaults file for unattended-upgrades
+notify_email: receiver@yourmail.com

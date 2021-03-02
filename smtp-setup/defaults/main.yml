@@ -1,0 +1,7 @@
+---
+# defaults file for smtp-setup
+smtp_server: smtp.yourserver.com
+smtp_user: sender@yourmail.com
+smtp_password: enterpasswordhere
+smtp_port: 587 # if this port changes then the lineinfile module must be modified too - use a conditional somewhere???
+notify_email: receiver@yourmail.com

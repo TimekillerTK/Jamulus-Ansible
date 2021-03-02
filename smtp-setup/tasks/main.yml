@@ -1,0 +1,43 @@
+---
+# tasks file for smtp-setup
+- name: Ensure mailutils are installed
+  apt: 
+    pkg:
+      - mailutils
+    state: present
+    update_cache: yes
+
+# Create file /etc/postfix/password containing SMTP login settings
+- name: Add SMTP password file
+  template:
+    src: smtp_password.j2
+    dest: /etc/postfix/password
+    owner: root
+    group: root
+    mode: 0600
+
+# Running this over and over again is harmless, but not optimal. This is a required step, otherwise you'll bump into the following errors 
+# Feb 23 16:40:05 ubuntu-ansible postfix/smtp[6668]: warning: hash:/etc/postfix/password is unavailable. open database /etc/postfix/password.db: No such file or directory
+# Feb 23 16:40:05 ubuntu-ansible postfix/smtp[6668]: warning: hash:/etc/postfix/password lookup error for "smtp.eu.mailgun.org"
+# Feb 23 16:40:05 ubuntu-ansible postfix/smtp[6668]: warning: 76EF7220EE7: smtp_sasl_password_maps lookup error
+- name: Set permissions for /etc/postfix/password with postmap
+  shell: postmap hash:/etc/postfix/password
+
+# For port 587, if statement here later (?)
+- name: Enable postfix submission port {{ vars.smtp_port }}
+  lineinfile:
+    dest: /etc/postfix/master.cf
+    regexp: "^(#)?submission inet n       -       y       -       -       smtpd"
+    line: "submission inet n       -       y       -       -       smtpd"
+  notify:
+  - restart postfix
+
+# Set up SMTP server for automated E-mail notifications
+# Config /etc/postfix/main.cf with specific settings (Jinja Template?)
+# Note: there may be an issue with the hashed password
+- name: Postfix main.cf file set
+  template:
+    src: postfix.j2
+    dest: /etc/postfix/main.cf
+  notify:
+  - restart postfix
