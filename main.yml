@@ -7,6 +7,7 @@
   roles:
   - smtp-setup
   - unattended-upgrades
+  - linux-security
   tasks:
 # Set time to current timezone - ntp server is not required
     - name: Set timezone to {{ vars.time_zone }}
@@ -16,66 +17,6 @@
   vars_files:
     - ./vars/vars.yml
 
-##################
-## Security Play##
-##################
-
-- name: Security play
-  hosts: raw
-  tasks:
-# Notify via mail on SSH login 
-# - upload .sh file
-# - add line to /etc/pam.d/sshd
-    - name: Upload shell script for SSH login notification
-      template:
-        src: ssh_notify.j2
-        dest: /etc/ssh/login_notify.sh
-        owner: root
-        group: root
-        mode: 0700
-
-# Too spammy during testing, disabled for now
-    - name: Modify sshd file to trigger SSH login notification script
-      lineinfile:
-        regexp: "^(#)?session optional pam_exec.so seteuid /etc/ssh/login_notify.sh"
-        line: "session optional pam_exec.so seteuid /etc/ssh/login_notify.sh"
-        state: present
-        dest: /etc/pam.d/sshd
-      notify:
-      - restart sshd
-
-# "Security" play
-    - name: Firewalld set SSH port {{ vars.ssh_port }} with rate limiting
-      firewalld:
-        rich_rule: "rule family='ipv4' port port='{{ vars.ssh_port }}' protocol='tcp' accept limit value='5/m'"
-        permanent: yes
-        immediate: yes
-        state: enabled
-    
-# Maybe instead of having this option, the previous one should upload a .j2 template with ssh service modified
-    - name: Ensure default ssh service is disabled
-      firewalld:
-        service: ssh
-        permanent: yes
-        immediate: yes
-        state: disabled
-
-    - name: Firewalld set Jamulus port enabled
-      firewalld:
-        port: "22124/udp"
-        permanent: yes
-        immediate: yes
-        state: enabled
-
-
-  vars_files:
-    - ./vars/vars.yml
-
-  handlers:
-    - name: restart sshd
-      service:
-        name: sshd
-        state: restarted
 
 
 #######################
@@ -94,6 +35,14 @@
           - qttools5-dev-tools
         state: present
         update_cache: yes
+
+    - name: Firewalld set Jamulus port enabled
+      firewalld:
+        port: "22124/udp"
+        permanent: yes
+        immediate: yes
+        state: enabled
+
     
     - name: Create jamulus user
       ansible.builtin.user:

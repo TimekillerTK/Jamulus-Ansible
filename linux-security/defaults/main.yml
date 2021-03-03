@@ -1,0 +1,4 @@
+---
+# defaults file for linux-security
+ssh_port: 22
+notify_email: yourmail@yourdomain.com
