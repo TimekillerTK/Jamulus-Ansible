@@ -1,0 +1,3 @@
+---
+# defaults file for jamulus-setup
+jamulus_archive_path: ../files/jamulus.tar.gz

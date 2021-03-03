@@ -1,0 +1,7 @@
+---
+# handlers file for jamulus-setup
+- name: start enable jamulus
+  service:
+    name: jamulus
+    state: restarted
+    enabled: yes

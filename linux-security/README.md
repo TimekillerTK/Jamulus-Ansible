@@ -5,7 +5,7 @@ Security hardening of a linux (Ubuntu) host
 
 Requirements
 ------------
-
+- `firewalld` used as system firewall
 - `smtp-setup` ansible role
 
 Role Variables
