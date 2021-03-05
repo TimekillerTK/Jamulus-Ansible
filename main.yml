@@ -2,7 +2,7 @@
 ########################################
 ## Unattended Upgrades / Security Play##
 ########################################
-- name: Unattended Upgrades + Security hardening
+- name: Play for security hardening, SMTP setup & unattended upgrades
   hosts: raw
   roles:
   - smtp-setup
@@ -22,7 +22,7 @@
 #######################
 ## Jamulus setup Play##
 #######################
-- name: Set up Jamulus
+- name: Play to set up Jamulus
   hosts: raw
   roles:
   - jamulus-setup
