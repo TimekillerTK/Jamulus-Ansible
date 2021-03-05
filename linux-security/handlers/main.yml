@@ -4,3 +4,9 @@
   service:
     name: sshd
     state: restarted
+
+- name: start firewalld
+  service:
+    name: firewalld
+    enabled: yes
+    state: restarted

@@ -1,0 +1,39 @@
+# {{ ansible_managed }}
+
+# Accidentally deleted sshd_config_conf.j2, fix this later
+# Tool for auditing SSH: https://github.com/jtesta/ssh-audit
+
+# Hardening SSH: https://medium.com/@jasonrigden/hardening-ssh-1bcb99cd4cef
+
+# Protocol 1 is obsolete, unsecure and should never be used
+Protocol 2
+
+# Disallows sshing in as the root user
+PermitRootLogin no
+
+# Set SSH Port
+Port {{ vars.ssh_port }}
+
+# Allows logging in with SSH key only
+PasswordAuthentication no
+
+# After 5 minutes, will check twice if client is active - if not - disconnect
+ClientAliveInterval 300
+ClientAliveCountMax 2
+
+# We're not using GUI applications on the server, so this is a no
+X11Forwarding no
+
+# Enable the RSA and ED25519 key preferences - set to more secure encryption standard
+# See:
+# * https://infosec.mozilla.org/guidelines/openssh
+# * https://stribika.github.io/2015/01/04/secure-secure-shell.html
+HostKey /etc/ssh/ssh_host_ed25519_key
+HostKey /etc/ssh/ssh_host_rsa_key
+
+# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com hardening guide
+# Keep in mind some are using openssh and some are using libressl
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com
+HostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com

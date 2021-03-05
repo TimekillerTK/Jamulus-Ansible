@@ -1,5 +1,31 @@
 ---
 # tasks file for linux-security
+# Makes sure firewalld is installed
+- name: firewalld installation check
+  apt:
+    name: firewalld
+    state: present
+  notify: start firewalld
+
+# This will group hosts by specific key (group_vars) using OS Distribution ansible facts
+# This will FAIL if there is no python interpreter installed (solved in previous step)
+# - name: Group by OS
+#   group_by:
+#     key: os_{{ ansible_facts['distribution'] }}
+
+# Modifies sshd config, mostly to disable password auth & disable root login
+# Notifies handler in handlers/main.yml to restart sshd after sshd config modificaiton
+- name: SSHD configuration, disable root login / password auth 
+  template:
+    src: sshd_config_conf.j2
+    dest: /etc/ssh/sshd_config.d/10-linux-security.conf
+    validate: 'sshd -t -f %s'
+    mode: 0640
+  notify: restart sshd
+
+# Remove Small diffie-hellman moduli, as per: https://www.ssh-audit.com/hardening_guides.html#ubuntu_20_04_lts
+# To be done later
+
 # Notify via mail on SSH login 
 # - upload .sh file
 # - add line to /etc/pam.d/sshd
@@ -11,7 +37,7 @@
     group: root
     mode: 0700
 
-# Warning, spammy in case you're logging into the box often!
+# WARNING, this is very spammy in case you're ssh'ing into the host often! Should be a conditional / variable
 # Make this optional/conditional
 # - name: Modify sshd PAM file to trigger SSH login notification script
 #   lineinfile:
@@ -36,4 +62,3 @@
     permanent: yes
     immediate: yes
     state: disabled
-
